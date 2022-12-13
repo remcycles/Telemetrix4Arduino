@@ -1,5 +1,6 @@
 /*
   Copyright (c) 2020-2021 Alan Yorinks All rights reserved.
+  Copyright (c) 2022 Remington Furman All rights reserved.
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE
@@ -179,6 +180,7 @@
 #define STEPPER_GET_TARGET_POSITION 53
 #define GET_FEATURES 54
 #define DIGITAL_POLL 55
+#define ANALOG_POLL 56
 
 
 /* Command Forward References*/
@@ -300,6 +302,8 @@ extern void get_features();
 
 extern void digital_poll();
 
+extern void analog_poll();
+
 // When adding a new command update the command_table.
 // The command length is the number of bytes that follow
 // the command byte itself, and does not include the command
@@ -374,6 +378,7 @@ command_descriptor command_table[] =
   (&stepper_get_target_position),
   (&get_features),
   (&digital_poll),
+  (&analog_poll),
 };
 
 
@@ -394,6 +399,7 @@ byte command_buffer[MAX_COMMAND_LENGTH];
 #define DIGITAL_REPORT DIGITAL_WRITE
 #define DIGITAL_POLL_REPORT DIGITAL_POLL
 #define ANALOG_REPORT ANALOG_WRITE
+#define ANALOG_POLL_REPORT ANALOG_POLL
 #define FIRMWARE_REPORT 5
 #define I_AM_HERE 6
 #define SERVO_UNAVAILABLE 7
@@ -748,6 +754,7 @@ void digital_poll()
   byte value;
   pin = command_buffer[0];
   value = digitalRead(pin);
+
   // report message
 
   // byte 0 = packet length
@@ -773,6 +780,29 @@ void analog_write()
 
   value = (command_buffer[1] << 8) + command_buffer[2];
   analogWrite(pin, value);
+}
+
+void analog_poll()
+{
+  byte pin;
+  byte value;
+  byte value_msb;
+  byte value_lsb;
+  pin = command_buffer[0];
+  value = analogRead(pin);
+  value_msb = (value >> 8) & 0xff;
+  value_lsb = value & 0xff;
+
+  // report message
+
+  // byte 0 = packet length
+  // byte 1 = report type
+  // byte 2 = pin number
+  // byte 3 = value_msb
+  // byte 4 = value_lsb
+  byte report_message[5] = {4, ANALOG_POLL_REPORT, pin, value_msb, value_lsb};
+
+  Serial.write(report_message, sizeof(report_message));
 }
 
 // This method allows you modify what reports are generated.
