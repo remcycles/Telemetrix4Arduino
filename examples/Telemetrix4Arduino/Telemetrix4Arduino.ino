@@ -178,6 +178,7 @@
 #define STEPPER_GET_DISTANCE_TO_GO 52
 #define STEPPER_GET_TARGET_POSITION 53
 #define GET_FEATURES 54
+#define DIGITAL_POLL 55
 
 
 /* Command Forward References*/
@@ -297,6 +298,8 @@ extern void stepper_is_running();
 
 extern void get_features();
 
+extern void digital_poll();
+
 // When adding a new command update the command_table.
 // The command length is the number of bytes that follow
 // the command byte itself, and does not include the command
@@ -370,6 +373,7 @@ command_descriptor command_table[] =
   {&stepper_get_distance_to_go},
   (&stepper_get_target_position),
   (&get_features),
+  (&digital_poll),
 };
 
 
@@ -388,6 +392,7 @@ byte command_buffer[MAX_COMMAND_LENGTH];
 // Reports sent to the client
 
 #define DIGITAL_REPORT DIGITAL_WRITE
+#define DIGITAL_POLL_REPORT DIGITAL_POLL
 #define ANALOG_REPORT ANALOG_WRITE
 #define FIRMWARE_REPORT 5
 #define I_AM_HERE 6
@@ -737,6 +742,23 @@ void digital_write()
   digitalWrite(pin, value);
 }
 
+void digital_poll()
+{
+  byte pin;
+  byte value;
+  pin = command_buffer[0];
+  value = digitalRead(pin);
+  // report message
+
+  // byte 0 = packet length
+  // byte 1 = report type
+  // byte 2 = pin number
+  // byte 3 = value
+  byte report_message[4] = {3, DIGITAL_POLL_REPORT, pin, value};
+
+  Serial.write(report_message, sizeof(report_message));
+}
+
 // set the pwm value for a digital output pin
 // The term analog is confusing here, but it is what
 // Arduino uses.
@@ -806,7 +828,6 @@ void modify_reporting()
 void get_features() {
   byte report_message[3] = {2, FEATURES, features};
   Serial.write(report_message, 3);
-
 }
 
 // Return the firmware version number
